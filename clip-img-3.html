@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>将头像裁切成圆形再上传</title>
+	<style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            min-width: 800px;
+            min-height: 400px;
+            box-shadow: 0 0 8px #ccc;
+            margin: 10px auto;
+            padding: 10px;
+            overflow: hidden;
+        }
+
+        .center {
+            text-align: center;
+        }
+
+        .img-box {
+            float: left;
+            box-shadow: 0 0 10px silver;
+            padding: 10px;
+            width: 220px;
+            height: 220px;
+            margin: 10px;
+        }
+
+        .img-box img {
+            max-width: 100%;
+        }
+
+	</style>
+</head>
+<body>
+<h4 class="center">
+  <pre>
+    将头像裁切成圆形再上传
+    使用自定义图案添加一个背景
+  </pre>
+</h4>
+
+<div class="container">
+	<input id="upload" type="file" accept="image/png,image/jpeg">
+	<br><br>
+	<div class="img-box" id="img_box"></div>
+	<div class="img-box" id="img_box_circle"></div>
+	<div class="img-box" id="img_box_canvas"></div>
+	<div class="img-box" id="img_box_border"></div>
+</div>
+
+<script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script>
+	var $input = $('#upload');
+	var $img_box = $('#img_box');
+	var $img_box_circle = $('#img_box_circle');
+	var $img_box_canvas = $('#img_box_canvas');
+	var $img_box_border = $('#img_box_border');
+	const imgSize = 200;
+
+	$input.on('change', function () {
+		let file = this.files[0];
+		console.log(file)
+		if (!file) {
+			return;
+		} else {
+			$img_box.html('');
+			$img_box_circle.html('');
+			$img_box_canvas.html('');
+			$img_box_border.html('');
+		}
+
+		var reader = new FileReader(); // 将input 标签获取的图片转为base64
+		reader.readAsDataURL(file);
+		reader.onload = function (e) {
+			let base64 = e.target.result;
+			let img = new Image();
+
+			img.src = base64;
+			img.onload = function () {
+				let canvas = clipCircle(img, imgSize, 0.5);
+
+				borderCanvas(canvas);
+
+				$img_box.append(`<img src="${base64}"/>`);
+				// $img_box_circle.append(`<img src="${clipBase64}"/>`);
+			}
+		}
+	})
+
+	// 设定尺寸  img： img || canvas
+	function scaling(img, size = 150, quality = 1) {
+		let canvas = document.createElement('canvas');
+		let ctx = canvas.getContext('2d');
+
+		canvas.width = size;
+		canvas.height = size;
+		ctx.drawImage(img, 0, 0, size, size);
+		$img_box_canvas.append(canvas);
+
+		// return canvas.toDataURL('image/png', quality);
+		/*
+		* https://developer.mozilla.org/zh-cn/docs/Web/API/HTMLCanvasElement/toDataURL
+		* 在指定图片格式为 image/jpeg 或 image/webp的情况下，可以从 0 到 1 的区间内
+		* */
+		return canvas;
+		// return canvas.toDataURL('image/jpeg', quality);
+	}
+
+
+	function borderCanvas(circleImg) {
+		let img = new Image();
+		img.src = './images/border-blue.png';
+		img.onload = function () {
+			let canvas = document.createElement('canvas');
+			let ctx = canvas.getContext('2d');
+			let padding = 8;// 在ps 上测量出来
+			let imgWidth = 179 - padding * 2; // 179 为背景图片的圆形部分的半径,
+			let dx = (imgSize - imgWidth) / 2;
+			let dy = padding;
+
+			canvas.width = imgSize;
+			canvas.height = imgSize;
+			ctx.drawImage(img, 0, 0, imgSize, imgSize); // 绘制背景图片
+			ctx.drawImage(circleImg, dx, dy, imgWidth, imgWidth); // 绘制目标图片
+			$img_box_border.append(canvas);
+
+			return canvas.toDataURL('image/png');
+		}
+	}
+
+	// 将目标图片裁切成圆形
+	function clipCircle(img, maxSize = 150, quality = 1) {
+		let canvas = document.createElement("canvas");
+		let ctx = canvas.getContext("2d");
+		let width = img.width;
+		let height = img.height;
+		let diameter = 0; // 直径
+		let radius = 0;
+		let dx = 0;
+		let dy = 0;
+
+		if (width > height) {
+			diameter = height;
+			dx = -(width - height) / 2;
+		} else {
+			diameter = width;
+			dx = -(height - width) / 2;
+		}
+
+		radius = diameter / 2;
+		canvas.width = diameter;
+		canvas.height = diameter;
+		ctx.beginPath();
+		ctx.arc(radius, radius, radius, 0, Math.PI * 2, false); // 圆点中心X  圆点中心Y 半径  开始角度  结束角度  是否逆时针
+		ctx.clip();
+		ctx.drawImage(img, dx, dy); // 要裁切的图片  x轴偏移 y轴偏移
+		return scaling(canvas, maxSize, quality);
+		// return canvas.toDataURL("image/png");
+	}
+
+</script>
+</body>
+</html>
